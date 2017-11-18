@@ -17,6 +17,8 @@ import android.view.View;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
     private static final String ACTION_USB_PERMISSION =
@@ -37,6 +39,9 @@ public class MainActivity extends AppCompatActivity {
         mPermissionIntent = PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0);
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
         registerReceiver(mUsbReceiver, filter);
+
+        /* Instantiate the timer for scheduling a task */
+        myTimer = new Timer();
     }
 
     /* Receive acceptance or denial of USB Permissions */
@@ -83,20 +88,22 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
+    byte[] bytes = new byte[TeensyConstants.OUT_SIZE];
+    UsbInterface intf;
+    UsbEndpoint outendpoint;
+    UsbDeviceConnection connection;
+    Timer myTimer;
     Runnable myUSBThread = new Runnable() {
-
         @Override
         public void run() {
             Log.d(TAG, "Number of Interfaces: "+teensyDevice.getInterfaceCount());
-            byte[] bytes = new byte[TeensyConstants.OUT_SIZE];
             boolean forceClaim = true;
             int timeout = 2000; //msec
 
-            UsbInterface intf = teensyDevice.getInterface(0);
+            intf = teensyDevice.getInterface(0);
             Log.d(TAG, "Number of Endpoints: "+intf.getEndpointCount());
-            UsbEndpoint outendpoint = intf.getEndpoint(1);
-            UsbDeviceConnection connection = ((UsbManager) getSystemService(Context.USB_SERVICE)).openDevice(teensyDevice);
+            outendpoint = intf.getEndpoint(1);
+            connection = ((UsbManager) getSystemService(Context.USB_SERVICE)).openDevice(teensyDevice);
             connection.claimInterface(intf, forceClaim);
 
             /* Clear all of the data in the buffer */
@@ -104,16 +111,20 @@ public class MainActivity extends AppCompatActivity {
                 bytes[i] = 0;
             }
 
-            /* Blink the LED 20 times */
-            for (int i=0; i<20; i++) {
+            /* Blink the LED using the Timer scheduler */
+            currCount = 0;
+            myTimer.scheduleAtFixedRate(new myBlinkTask(), 0, 20);
+
+            /* Blink the LED 20 times with spin waits */
+            /*for (int i=0; i<20; i++) {
                 bytes[0] = 1;
                 connection.bulkTransfer(outendpoint, bytes, bytes.length, timeout);
-                myWait(20);
+                myWait(5);
                 Log.d(TAG, "Blink");
                 bytes[0] = 0;
                 connection.bulkTransfer(outendpoint, bytes, bytes.length, timeout);
-                myWait(20);
-            }
+                myWait(5);
+            }*/
         }
     };
 
@@ -122,4 +133,27 @@ public class MainActivity extends AppCompatActivity {
         long start = System.currentTimeMillis();
         while ((System.currentTimeMillis()-start) < msec) { }
     }
+
+
+    public final int maxCount = 40;  //Number of times to blink x2
+    public int currCount;
+    /* Timer task for scheduling a blink  */
+    public class myBlinkTask extends TimerTask {
+
+        @Override
+        public void run() {
+          if (currCount < maxCount) {
+              if (currCount%2 == 1) {
+                  bytes[0] = 0;
+              } else {
+                  bytes[0] = 1;
+              }
+              connection.bulkTransfer(outendpoint, bytes, bytes.length, 100);
+              currCount++;
+          } else {
+              Log.d(TAG, "Done Blinking");
+              this.cancel();
+          }
+        }
+    };
 }
