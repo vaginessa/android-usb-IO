@@ -6,6 +6,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -34,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
         mPermissionIntent = PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0);
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
         registerReceiver(mUsbReceiver, filter);
-        scanForTeensy(null);
     }
 
     /* Receive acceptance or denial of USB Permissions */
@@ -50,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
                             //call method to set up device communication
                             Log.d(TAG, "Permission to communicate with Teensy");
                             teensyConnected = true;
+                            //Start the blink test
+                            new Thread(myUSBThread).start();
                         }
                     }
                     else {
@@ -84,7 +88,38 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void run() {
+            Log.d(TAG, "Number of Interfaces: "+teensyDevice.getInterfaceCount());
+            byte[] bytes = new byte[TeensyConstants.OUT_SIZE];
+            boolean forceClaim = true;
+            int timeout = 2000; //msec
 
+            UsbInterface intf = teensyDevice.getInterface(0);
+            Log.d(TAG, "Number of Endpoints: "+intf.getEndpointCount());
+            UsbEndpoint outendpoint = intf.getEndpoint(1);
+            UsbDeviceConnection connection = ((UsbManager) getSystemService(Context.USB_SERVICE)).openDevice(teensyDevice);
+            connection.claimInterface(intf, forceClaim);
+
+            /* Clear all of the data in the buffer */
+            for (int i=0; i<bytes.length; i++) {
+                bytes[i] = 0;
+            }
+
+            /* Blink the LED 20 times */
+            for (int i=0; i<20; i++) {
+                bytes[0] = 1;
+                connection.bulkTransfer(outendpoint, bytes, bytes.length, timeout);
+                myWait(20);
+                Log.d(TAG, "Blink");
+                bytes[0] = 0;
+                connection.bulkTransfer(outendpoint, bytes, bytes.length, timeout);
+                myWait(20);
+            }
         }
     };
+
+    /* Spin wait */
+    public void myWait(long msec) {
+        long start = System.currentTimeMillis();
+        while ((System.currentTimeMillis()-start) < msec) { }
+    }
 }
