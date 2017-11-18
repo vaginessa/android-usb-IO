@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.jordanbrobots.usb_io_app">
+    <uses-feature android:name="android.hardware.usb.host" />
 
     <application
         android:allowBackup="true"
