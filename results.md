@@ -84,7 +84,7 @@ With a 20 msec scheduled period, the timing characteristics appear to be very go
 ![test image](images/TEK00014.PNG)
 
 ### 10 Msec period
-With a 10 msec scheduled period, the received data appears to be relatively consistent and most deadlines are met with up to about 4 msec of latency, but an occasional deadline is entirely missed. Depending on the use case, this may or may not be acceptable.
+With a 10 msec scheduled period, the received data appears to be relatively consistent and most deadlines are met with up to about 4 msec of latency, but an occasional deadline is entirely missed. The missed deadlines are not dropped, and instead push back the other operations. Depending on the use case, this may or may not be acceptable.
 
 ![test image](images/TEK00015.PNG)
 ![test image](images/TEK00016.PNG)
@@ -92,7 +92,7 @@ With a 10 msec scheduled period, the received data appears to be relatively cons
 ![test image](images/TEK00018.PNG)
 
 ### 5 Msec period
-With a 5 msec scheduled period, most of the deadlines are still met, but deadlines are more frequently entirely missed (do not execute) or push back other scheduled transfers.
+With a 5 msec scheduled period, most of the deadlines are still met, but deadlines are more frequently entirely missed push back other scheduled transfers.
 
 ![test image](images/TEK00019.PNG)
 ![test image](images/TEK00020.PNG)
